@@ -161,6 +161,10 @@ add_custom_target(update_build_and_version_info ALL COMMAND make rebuild_cache)
 # Build clang hipify if enabled
 add_subdirectory(hipify-clang)
 
+# General hip library for host and devices
+add_library(host INTERFACE)
+add_library(device INTERFACE)
+
 # Build hip_hcc if platform is hcc
 if(HIP_PLATFORM STREQUAL "hcc")
     include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -191,6 +195,8 @@ if(HIP_PLATFORM STREQUAL "hcc")
 
     add_library(hip_hcc SHARED ${SOURCE_FILES_RUNTIME})
     target_link_libraries(hip_hcc PRIVATE ${hcc_LIBRARIES})
+    target_link_libraries(host INTERFACE hip_hcc)
+    target_link_libraries(device INTERFACE hip_hcc ${hcc_LIBRARIES})
 
     add_library(hip_hcc_static STATIC ${SOURCE_FILES_RUNTIME})
     target_link_libraries(hip_hcc_static ${hcc_LIBRARIES})
@@ -199,6 +205,7 @@ if(HIP_PLATFORM STREQUAL "hcc")
     add_library(hip_device STATIC ${SOURCE_FILES_DEVICE})
     target_link_libraries(hip_device ${hcc_LIBRARIES})
     add_dependencies(hip_device hip_hcc)
+    target_link_libraries(device INTERFACE hip_device)
 
     foreach(TARGET hip_hcc hip_hcc_static hip_device)
         target_include_directories(${TARGET} SYSTEM PRIVATE ${HSA_HEADER})
@@ -241,7 +248,7 @@ set( CONFIG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip )
 if(HIP_PLATFORM STREQUAL "hcc")
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/hip_hc.ll ${CMAKE_CURRENT_SOURCE_DIR}/src/hip_hc_gfx803.ll DESTINATION ${LIB_INSTALL_DIR})
 
-    install(TARGETS hip_hcc_static hip_hcc hip_device 
+    install(TARGETS hip_hcc_static hip_hcc hip_device device host
         EXPORT hip-targets 
         DESTINATION ${LIB_INSTALL_DIR}
     )
@@ -376,11 +383,7 @@ endif()
 # Target: test
 option(BUILD_TESTING Off)
 if(BUILD_TESTING)
-    set(HIP_PATH ${CMAKE_INSTALL_PREFIX})
     set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/bin" "${HIP_PATH}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/cmake" "${HIP_PATH}/cmake" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-    set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
     include(${HIP_SRC_PATH}/tests/hit/HIT.cmake)
 
     # Add tests

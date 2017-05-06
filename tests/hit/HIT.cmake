@@ -1,5 +1,4 @@
 include(CTest)
-find_package(HIP REQUIRED)
 
 #-------------------------------------------------------------------------------
 # Helper macro to parse BUILD instructions
@@ -148,8 +147,13 @@ macro(HIT_ADD_FILES _dir _label _parent)
             if(_exclude_platforms STREQUAL "all" OR _exclude_platforms STREQUAL ${HIP_PLATFORM})
             else()
                 set_source_files_properties(${_sources} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
-                hip_reset_flags()
-                hip_add_executable(${target} ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options} EXCLUDE_FROM_ALL)
+                add_executable(${target} EXCLUDE_FROM_ALL ${_sources})
+                target_link_libraries(${target} device)
+                if(HIP_PLATFORM STREQUAL "hcc")
+                    target_compile_options(${target} PUBLIC ${_hipcc_options} ${_hcc_options})
+                else()
+                    target_compile_options(${target} PUBLIC ${_hipcc_options} ${_nvcc_options})
+                endif()
                 set_target_properties(${target} PROPERTIES OUTPUT_NAME ${_target} RUNTIME_OUTPUT_DIRECTORY ${_label} LINK_DEPENDS "${HIP_LIB_FILES}")
                 add_dependencies(${_parent} ${target})
             endif()
